@@ -37,7 +37,7 @@ class Trainer(object):
         super(Trainer, self).__init__()
         self.config = config
         self.model = model
-        self.logger = getLogger()
+        self.logger = getLogger(self.__class__.__name__)
 
         self.wandblogger = WandbLogger(config)
 
@@ -426,6 +426,7 @@ class Trainer(object):
             with torch.no_grad():
                 for idx, items in tqdm(enumerate(item_loader), total=len(item_loader)):
                     items = self.to_device(items)
+                    # self.logger.info(f"Inference item: {items = }")
                     items = self.model(items, mode='compute_item')
                     self.item_feature.append(items)
                 if isinstance(items, tuple):
@@ -437,6 +438,34 @@ class Trainer(object):
         else:
             with torch.no_grad():
                 self.item_feature = self.model.module.compute_item_all()
+
+        # Save item_feature to disk
+        if True:
+            save_path = "/root/autodl-pvt/HLLM/outputs/item_feature.pt"
+
+            to_save = self.item_feature
+            if isinstance(to_save, tuple):
+                to_save_cpu = tuple(x.detach().cpu() for x in to_save)
+                shapes = [tuple(x.shape) for x in to_save_cpu]
+                dtypes = [str(x.dtype) for x in to_save_cpu]
+            else:
+                to_save_cpu = to_save.detach().cpu()
+                shapes = tuple(to_save_cpu.shape)
+                dtypes = str(to_save_cpu.dtype)
+
+            torch.save(
+                {
+                    'item_feature': to_save_cpu,
+                    'meta': {
+                        'shapes': shapes,
+                        'dtypes': dtypes,
+                        'stage': self.config.get('stage'),
+                        'dataset': self.config.get('dataset'),
+                    }
+                },
+                save_path
+            )
+            self.logger.info(f"Saved item_feature to {save_path} shapes={shapes}")
 
     def distributed_concat(self, tensor, num_total_examples):
         output_tensors = [tensor.clone() for _ in range(torch.distributed.get_world_size())]

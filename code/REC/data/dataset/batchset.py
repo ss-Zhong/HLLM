@@ -55,9 +55,23 @@ class BatchTextDataset(Dataset):
                     if value and str(value) != 'nan':
                         text_str += f"{key}: {value}"
 
-            ids = self.tokenizer.encode(text_str)
-            ids = ids[:self.max_text_length]
+            ids_origin = self.tokenizer.encode(text_str)
+            ids_origin = ids_origin[:self.max_text_length]
+
+            out = self.tokenizer(
+                text_str,
+                max_length=self.max_text_length,
+                padding=False,
+                truncation=True,
+                return_attention_mask=False
+            )
+            
+            ids = out["input_ids"]
+
+            self.logger.info(f"Process item: {ids.shape = }, origin_ids={ids_origin.shape}")
+
             mask = [1] * len(ids)
+
             return ids, mask
 
         if index == 0 or index == self.item_num:

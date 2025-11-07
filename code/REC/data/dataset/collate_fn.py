@@ -38,8 +38,11 @@ def customize_collate(batch):
             # If we're in a background process, concatenate directly into a
             # shared memory tensor to avoid an extra copy
             numel = sum(x.numel() for x in batch)
-            storage = elem.storage()._new_shared(numel)
+            # storage = elem.storage()._new_shared(numel) # original, but TypedStorage is deprecated，and UntypedStorage will be the only storage class in future PyTorch versions.
+            storage = elem.untyped_storage()._new_shared(numel)
             out = elem.new(storage)
+            print( "customize_collate numel:", numel )
+        # return torch.stack(batch, 0, out=out)
         return torch.stack(batch, 0, out=out)
     elif (
         elem_type.__module__ == "numpy"
@@ -103,9 +106,10 @@ def customize_rmpad_collate(batch):
             # If we're in a background process, concatenate directly into a
             # shared memory tensor to avoid an extra copy
             numel = sum(x.numel() for x in batch)
-            storage = elem.storage()._new_shared(numel)
+            storage = elem.untyped_storage()._new_shared(numel)
             out = elem.new(storage)
-        return torch.stack(batch, 0, out=out)
+        # return torch.stack(batch, 0, out=out)
+        return torch.stack(batch, 0)
     elif (
         elem_type.__module__ == "numpy"
         and elem_type.__name__ != "str_"

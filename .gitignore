@@ -3,3 +3,7 @@
 code/log/
 code/log_tensorboard/
 code/saved/
+information/
+dataset/
+checkpoints/
+outputs/
